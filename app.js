@@ -8,6 +8,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.urlencoded({ extended: true }));
+// Remove or keep urlencoded, but you MUST add this line:
+app.use(express.json()); 
+app.use(express.static('public'));
+
 app.use(express.static('public'));
 
 // 2. Read the hidden variable using process.env
@@ -94,6 +98,58 @@ app.post('/clear-logs', async (req, res) => {
         res.status(500).send("Could not clear database");
     }
 });
+
+// 1. GET ALL LOGS: Returns an array of JSON objects
+app.get('/api/logs', async (req, res) => {
+    try {
+        const logs = await Log.find().sort({ createdAt: -1 });
+        // Send back data with a clean JSON structure and a 200 OK status
+        res.status(200).json({
+            success: true,
+            count: logs.length,
+            data: logs
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Server Error fetching logs" });
+    }
+});
+
+// 2. CREATE A LOG: Expects JSON input, saves it, and returns the created object
+// We add express.json() middleware right after this to read raw JSON payloads
+app.post('/api/logs', async (req, res) => {
+    try {
+        // Instead of req.body.userText from a form, we read from raw JSON data
+        const { text } = req.body; 
+
+        if (!text) {
+            return res.status(400).json({ success: false, error: "Please add a text field" });
+        }
+
+        const newLog = new Log({ text });
+        await newLog.save();
+
+        res.status(201).json({
+            success: true,
+            data: newLog
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Server Error saving log" });
+    }
+});
+
+// 3. DELETE ALL LOGS: Uses the correct HTTP DELETE method instead of POST
+app.delete('/api/logs', async (req, res) => {
+    try {
+        await Log.deleteMany({});
+        res.status(200).json({
+            success: true,
+            message: "All database logs successfully cleared"
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Server Error clearing logs" });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
