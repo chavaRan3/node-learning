@@ -147,7 +147,7 @@ app.get('/api/logs', protect, async (req, res) => {
 
 // 2. CREATE A LOG: Expects JSON input, saves it, and returns the created object
 // We add express.json() middleware right after this to read raw JSON payloads
-app.post('/api/logs', protect, async (req, res) => {
+app.post('/api/logs', async (req, res) => {
     try {
         // Instead of req.body.userText from a form, we read from raw JSON data
         const { text } = req.body; 

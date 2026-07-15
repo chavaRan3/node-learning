@@ -1,17 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Node.js Form Submission</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Node.js Dashboard</title>
     <link rel="stylesheet" href="style.css">
-
 </head>
 <body>
-    <h1>Submit Data to Node.js Backend</h1>
-    <!-- The form sends data to /submit-form using the POST method -->
-    <form action="/submit-form" method="POST">
-        <label for="userText">Type something:</label>
-        <input type="text" id="userText" name="userText" required>
-        <button type="submit">Send to Server</button>
-    </form>
+
+    <!-- SECTION 1: AUTHENTICATION WINDOW -->
+    <div id="authContainer" class="card">
+        <h2 id="authTitle">Login to Your Account</h2>
+        <form id="authForm">
+            <input type="text" id="username" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit" id="authBtn">Sign In</button>
+        </form>
+        <p id="toggleAuthText">Don't have an account? <span id="toggleAuth" onclick="toggleAuthMode()">Sign Up</span></p>
+    </div>
+
+    <!-- SECTION 2: PRIVATE DASHBOARD (Hidden by Default) -->
+    <div id="dashboardContainer" class="card hidden">
+        <div class="dashboard-header">
+            <h2>Cloud Log Console</h2>
+            <button onclick="logout()" class="btn-danger small">Logout</button>
+        </div>
+
+        <!-- Submit new log -->
+        <form id="logForm">
+            <input type="text" id="logText" placeholder="Write a new cloud entry..." required>
+            <button type="submit">Submit Entry</button>
+        </form>
+
+        <!-- View existing logs -->
+        <h3>Stored Cloud Logs (<span id="logCount">0</span>)</h3>
+        <div id="logsDisplay">Loading your logs securely...</div>
+        
+        <button onclick="clearAllLogs()" class="btn-danger width-100">🗑️ Clear Cloud Database</button>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>

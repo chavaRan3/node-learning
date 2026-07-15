@@ -1,34 +1,60 @@
+* { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
+    background-color: #0f172a;
+    color: #f8fafc;
     display: flex;
-    flex-direction: column;
-    align-items: center;
     justify-content: center;
-    height: 100vh;
+    align-items: center;
+    min-height: 100vh;
     margin: 0;
 }
-form {
-    background: white;
+.card {
+    background: #1e293b;
     padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    width: 100%;
+    max-width: 450px;
 }
-input[type="text"] {
-    width: 250px;
-    padding: 10px;
-    margin-right: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+.hidden { display: none !important; }
+h2, h3 { margin-top: 0; color: #38bdf8; }
+form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+input {
+    background: #334155;
+    border: 1px solid #475569;
+    padding: 12px;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 15px;
 }
+input:focus { outline: 2px solid #38bdf8; }
 button {
-    padding: 10px 15px;
-    background-color: #007bff;
-    color: white;
+    background: #38bdf8;
+    color: #0f172a;
+    font-weight: bold;
     border: none;
-    border-radius: 4px;
+    padding: 12px;
+    border-radius: 6px;
     cursor: pointer;
+    font-size: 15px;
+    transition: background 0.2s;
 }
-button:hover {
-    background-color: #0056b3;
+button:hover { background: #0ea5e9; }
+.btn-danger { background: #ef4444; color: #fff; }
+.btn-danger:hover { background: #dc2626; }
+.width-100 { width: 100%; }
+.small { padding: 6px 12px; font-size: 13px; }
+.dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+#toggleAuth { color: #38bdf8; cursor: pointer; text-decoration: underline; }
+#logsDisplay {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 13px;
+    margin-bottom: 15px;
+    border: 1px solid #334155;
 }
+.log-item { padding: 6px 0; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
