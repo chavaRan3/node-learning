@@ -1,79 +1,99 @@
 const express = require('express');
-const fs = require('fs'); 
-// Import Node's built-in Path module to handle folder paths cleanly
-const path = require('path'); 
+const mongoose = require('mongoose'); 
+const path = require('path');
+// 1. Load the dotenv package at the absolute top of the file
+require('dotenv').config(); 
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
+// 2. Read the hidden variable using process.env
+const MONGO_URI = process.env.MONGO_URI;
+
+mongoose.connect(MONGO_URI)
+    .then(() => console.log("Successfully connected to MongoDB Cloud!"))
+    .catch(err => console.error("Database connection error:", err));
+
+// ... Leave all your remaining routes (app.post, app.get, etc.) exactly the same ...
+
+
+// 2. DEFINE A SCHEMA & MODEL (This structures your database data)
+const logSchema = new mongoose.Schema({
+    text: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+});
+const Log = mongoose.model('Log', logSchema);
+
+// 3. GET ROUTE: Home Page
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html');
 });
 
-// 1. MODIFIED POST ROUTE: Finds and displays the file path
-app.post('/submit-form', (req, res) => {
-    const userSubmittedText = req.body.userText;
-    const dataToSave = `User Entry: ${userSubmittedText}\n`;
+// 4. POST ROUTE: Save data to MongoDB
+app.post('/submit-form', async (req, res) => {
+    try {
+        const userSubmittedText = req.body.userText;
 
-    fs.appendFile('log.txt', dataToSave, (err) => {
-        if (err) return res.status(500).send("Server Error");
-        
-        // Find the absolute system directory where log.txt is saved
-        const fileDirectory = path.resolve(__dirname);
-        const fullFilePath = path.join(fileDirectory, 'log.txt');
+        // Save a new document into MongoDB
+        const newLog = new Log({ text: userSubmittedText });
+        await newLog.save();
 
-        console.log(`Saved to log.txt at: ${fullFilePath}`);
-
-        // Send a response showing the success and the exact directory path
+        console.log(`Saved to MongoDB: ${userSubmittedText}`);
         res.send(`
-            <h1>Success! Message Saved.</h1>
-            <p><strong>File Directory Location on your Mac:</strong><br> <code>${fileDirectory}</code></p>
-            <p><strong>Full File Path:</strong><br> <code>${fullFilePath}</code></p>
+            <h1>Success! Saved to Cloud Database.</h1>
             <br>
             <a href="/view-logs">📁 View All Saved Logs</a> | <a href="/">⬅️ Go Back</a>
         `);
-    });
+    } catch (err) {
+        res.status(500).send("Error saving data to database");
+    }
 });
 
-// 2. NEW GET ROUTE: Reads the file and displays it on a webpage
-// MODIFIED ROUTE: Displays logs along with a delete form
-app.get('/view-logs', (req, res) => {
-    fs.readFile('log.txt', 'utf8', (err, data) => {
-        if (err || !data) {
-            return res.send('<h1>No logs found yet!</h1><a href="/">Go Back</a>');
+// 5. GET ROUTE: Read data from MongoDB
+app.get('/view-logs', async (req, res) => {
+    try {
+        // Fetch all logs from the database, newest first
+        const logs = await Log.find().sort({ createdAt: -1 });
+
+        if (logs.length === 0) {
+            return res.send('<h1>No logs found in the database!</h1><a href="/">Go Back</a>');
         }
-        
-        const formattedLogs = data.replace(/\n/g, '<br>');
-        
+
+        // Format data into HTML strings
+        const formattedLogs = logs.map(log => 
+            `[${log.createdAt.toLocaleString()}] User Entry: ${log.text}`
+        ).join('<br>');
+
         res.send(`
-            <h1>Saved Logs</h1>
+            <h1>Cloud Database Logs</h1>
             <div style="background: #eef; padding: 15px; border-radius: 5px; font-family: monospace;">
                 ${formattedLogs}
             </div>
             <br>
-            <!-- Form to trigger log clearing -->
-            <form action="/clear-logs" method="POST" style="box-shadow:none; padding:0; display:inline;">
-                <button type="submit" style="background-color: #dc3545;">🗑️ Clear All Logs</button>
+            <form action="/clear-logs" method="POST" style="display:inline;">
+                <button type="submit" style="background-color: #dc3545; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">🗑️ Clear Database</button>
             </form>
             | <a href="/">⬅️ Go Back to Form</a>
         `);
-    });
+    } catch (err) {
+        res.status(500).send("Error reading from database");
+    }
 });
 
-
-// NEW ROUTE: Deletes log.txt when requested
-app.post('/clear-logs', (req, res) => {
-    fs.unlink('log.txt', (err) => {
-        if (err && err.code !== 'ENOENT') {
-            return res.status(500).send("Could not clear logs");
-        }
-        console.log("log.txt was successfully deleted.");
-        res.send('<h1>Logs cleared successfully!</h1><a href="/">Go Back</a>');
-    });
+// 6. POST ROUTE: Clear database logs
+app.post('/clear-logs', async (req, res) => {
+    try {
+        // This deletes everything inside the logs collection
+        await Log.deleteMany({});
+        console.log("MongoDB collection cleared.");
+        res.send('<h1>Database cleared successfully!</h1><a href="/">Go Back</a>');
+    } catch (err) {
+        res.status(500).send("Could not clear database");
+    }
 });
-
 
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
