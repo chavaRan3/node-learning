@@ -1,6 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose'); 
 const path = require('path');
+
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+
 // 1. Load the dotenv package at the absolute top of the file
 require('dotenv').config(); 
 
@@ -30,6 +34,33 @@ const logSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 const Log = mongoose.model('Log', logSchema);
+
+// DEFINE USER SCHEMA
+const userSchema = new mongoose.Schema({
+    username: { type: String, required: true, unique: true },
+    password: { type: String, required: true }
+});
+const User = mongoose.model('User', userSchema);
+
+// Guard Middleware
+const protect = (req, res, next) => {
+    // Look for the token in the request headers
+    const token = req.header('Authorization')?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ success: false, error: "Access denied. No token provided." });
+    }
+
+    try {
+        // Verify the token using our secret key
+        const verified = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = verified; // Attach user info to the request
+        next(); // Let them pass to the route!
+    } catch (err) {
+        res.status(400).json({ success: false, error: "Invalid token." });
+    }
+};
+
 
 // 3. GET ROUTE: Home Page
 app.get('/', (req, res) => {
@@ -100,7 +131,7 @@ app.post('/clear-logs', async (req, res) => {
 });
 
 // 1. GET ALL LOGS: Returns an array of JSON objects
-app.get('/api/logs', async (req, res) => {
+app.get('/api/logs', protect, async (req, res) => {
     try {
         const logs = await Log.find().sort({ createdAt: -1 });
         // Send back data with a clean JSON structure and a 200 OK status
@@ -116,7 +147,7 @@ app.get('/api/logs', async (req, res) => {
 
 // 2. CREATE A LOG: Expects JSON input, saves it, and returns the created object
 // We add express.json() middleware right after this to read raw JSON payloads
-app.post('/api/logs', async (req, res) => {
+app.post('/api/logs', protect, async (req, res) => {
     try {
         // Instead of req.body.userText from a form, we read from raw JSON data
         const { text } = req.body; 
@@ -138,7 +169,7 @@ app.post('/api/logs', async (req, res) => {
 });
 
 // 3. DELETE ALL LOGS: Uses the correct HTTP DELETE method instead of POST
-app.delete('/api/logs', async (req, res) => {
+app.delete('/api/logs', protect, async (req, res) => {
     try {
         await Log.deleteMany({});
         res.status(200).json({
@@ -147,6 +178,53 @@ app.delete('/api/logs', async (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ success: false, error: "Server Error clearing logs" });
+    }
+});
+
+
+
+
+// 1. REGISTER A NEW USER
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        // Check if user already exists
+        const userExists = await User.findOne({ username });
+        if (userExists) return res.status(400).json({ success: false, error: "User already exists" });
+
+        // Scramble the password securely
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Save user to database
+        const newUser = new User({ username, password: hashedPassword });
+        await newUser.save();
+
+        res.status(201).json({ success: true, message: "User registered successfully!" });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Server registration error" });
+    }
+});
+
+// 2. USER LOGIN (Generates the JWT Badge)
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        const user = await User.findOne({ username });
+        if (!user) return res.status(400).json({ success: false, error: "Invalid username or password" });
+
+        // Compare entered password with hashed password in database
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(400).json({ success: false, error: "Invalid username or password" });
+
+        // Create and sign a JWT token that lasts for 1 hour
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        res.status(200).json({ success: true, token });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Server login error" });
     }
 });
 
