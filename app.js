@@ -1,7 +1,6 @@
 const cors = require('cors');
 
 // Place this right below your const app = express(); line
-app.use(cors()); // This tells your backend to welcome incoming requests from React!
 
 
 // ==========================================
@@ -18,6 +17,9 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(cors()); // This tells your backend to welcome incoming requests from React!
+
 
 // ==========================================
 // 2. EXPRESS MIDDLEWARE INTERCEPTORS
@@ -142,5 +144,17 @@ io.on('connection', (socket) => {
 server.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
 });
+
+// 🔥 NEW UNPROTECTED PUBLIC ROUTE FOR REACT PRACTICE
+app.get('/api/public-logs', async (req, res) => {
+    try {
+        const logs = await Log.find().sort({ createdAt: -1 });
+        res.status(200).json({ success: true, count: logs.length, data: logs });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Server Error" });
+    }
+});
+
+
 
 module.exports = { app, server };
