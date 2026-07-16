@@ -1,3 +1,9 @@
+const cors = require('cors');
+
+// Place this right below your const app = express(); line
+app.use(cors()); // This tells your backend to welcome incoming requests from React!
+
+
 // ==========================================
 // 1. MODULE IMPORTS & PACKAGES
 // ==========================================
