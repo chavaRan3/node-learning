@@ -187,3 +187,13 @@ socket.on('logAdded', (newLog) => {
     `;
     display.insertAdjacentHTML('afterbegin', newLogHTML);
 });
+
+// Listen for 'logsCleared' broadcast from the backend
+socket.on('logsCleared', () => {
+    const display = document.getElementById("logsDisplay");
+    const countSpan = document.getElementById("logCount");
+
+    // Instantly reset the UI numbers and display a placeholder message
+    countSpan.innerText = "0";
+    display.innerHTML = "<span style='color: #64748b;'>No items found in cloud database.</span>";
+});
