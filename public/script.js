@@ -1,3 +1,5 @@
+const socket = io(); // Connects to the WebSocket server pipeline automatically
+
 let isLoginMode = true;
 const API_URL = window.location.origin; // Dynamically targets localhost or your live Render link
 
@@ -131,3 +133,57 @@ function logout() {
     document.getElementById("dashboardContainer").classList.add("hidden");
     document.getElementById("authContainer").classList.remove("hidden");
 }
+
+
+// Handle Browser File Upload Form
+document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    
+    const fileInput = document.getElementById("fileInput");
+    const statusDiv = document.getElementById("uploadStatus");
+    statusDiv.innerText = "Uploading to cloud system...";
+
+    // 1. Pack the file binary natively using FormData
+    const formData = new FormData();
+    formData.append("myFile", fileInput.files[0]);
+
+    try {
+        // 2. Ship the file to your backend architecture
+        const response = await fetch(`${API_URL}/api/upload`, {
+            method: "POST",
+            body: formData // Let the browser handle content-type headers automatically for multipart data
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            statusDiv.innerHTML = `<span style="color:#22c55e;">✅ Success! ${result.fileDetails.savedName} (${result.fileDetails.size}) saved.</span>`;
+            fileInput.value = ""; // Empty out the picker
+        } else {
+            statusDiv.innerHTML = `<span style="color:#ef4444;">❌ Error: ${result.error}</span>`;
+        }
+    } catch (err) {
+        statusDiv.innerHTML = `<span style="color:#ef4444;">❌ Network connection failed.</span>`;
+    }
+});
+
+// Listen for 'logAdded' broadcast from the backend
+socket.on('logAdded', (newLog) => {
+    const display = document.getElementById("logsDisplay");
+    const countSpan = document.getElementById("logCount");
+
+    // If the box had a "No items found" placeholder, clear it out first
+    if (countSpan.innerText === "0") {
+        display.innerHTML = "";
+    }
+
+    // Increment log counter visually
+    countSpan.innerText = parseInt(countSpan.innerText) + 1;
+
+    // Insert the new log cleanly at the top of the logging block area
+    const newLogHTML = `
+        <div class="log-item" style="border-left: 3px solid #38bdf8; padding-left: 8px;">
+            <span style="color: #64748b;">[${new Date(newLog.createdAt).toLocaleTimeString()}]</span> ${newLog.text}
+        </div>
+    `;
+    display.insertAdjacentHTML('afterbegin', newLogHTML);
+});

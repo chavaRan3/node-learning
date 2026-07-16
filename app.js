@@ -18,6 +18,49 @@ app.use(express.static('public'));
 
 app.use(express.static('public'));
 
+
+const multer = require('multer');
+
+// Configure how and where files are saved
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/'); // Save files into the 'uploads' folder
+    },
+    filename: (req, file, cb) => {
+        // Give the file a unique name using the current timestamp + original name
+        cb(null, Date.now() + '-' + file.originalname);
+    }
+});
+
+
+// Initialize the secured upload middleware
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 2 * 1024 * 1024 }, // 1. Limit size to exactly 2 Megabytes
+    fileFilter: (req, file, cb) => {
+        // 2. Read the file's mimetype to confirm it's an image
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true); // Accept the file
+        } else {
+            cb(new Error('Invalid file type. Only JPEG, JPG, and PNG are allowed!'), false); // Reject
+        }
+    }
+});
+
+// 1. IMPORT HTTP & SOCKET.IO (Add this near your other package imports)
+const http = require('http');
+const { Server } = require('socket.io');
+
+// 2. CREATE THERMAL SERVER CORE WRAPPER (Put this right above your app.listen replacement)
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: { origin: "*" } // Allows incoming dashboard clients to sync safely
+});
+
+
+
 // 2. Read the hidden variable using process.env
 const MONGO_URI = process.env.MONGO_URI;
 
@@ -149,20 +192,16 @@ app.get('/api/logs', protect, async (req, res) => {
 // We add express.json() middleware right after this to read raw JSON payloads
 app.post('/api/logs', async (req, res) => {
     try {
-        // Instead of req.body.userText from a form, we read from raw JSON data
         const { text } = req.body; 
-
-        if (!text) {
-            return res.status(400).json({ success: false, error: "Please add a text field" });
-        }
+        if (!text) return res.status(400).json({ success: false, error: "Please add a text field" });
 
         const newLog = new Log({ text });
         await newLog.save();
 
-        res.status(201).json({
-            success: true,
-            data: newLog
-        });
+        // 🔥 LIVE SYNC BROADCAST: Send this entry to all connected browser windows instantly!
+        io.emit('logAdded', newLog);
+
+        res.status(201).json({ success: true, data: newLog });
     } catch (err) {
         res.status(500).json({ success: false, error: "Server Error saving log" });
     }
@@ -229,6 +268,44 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 
-app.listen(PORT, () => {
+// Updated upload route with error handling middleware catch
+app.post('/api/upload', (req, res) => {
+    // Run the upload logic manually to intercept validation errors cleanly
+    upload.single('myFile')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            // Handles native Multer errors like file too large
+            return res.status(400).json({ success: false, error: `Upload error: ${err.message} (Max 2MB)` });
+        } else if (err) {
+            // Handles our custom fileFilter rejection error
+            return res.status(400).json({ success: false, error: err.message });
+        }
+        
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: "Please select a file to upload." });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Image uploaded and secured successfully!",
+            fileDetails: { savedName: req.file.filename, size: `${(req.file.size / 1024).toFixed(2)} KB` }
+        });
+    });
+});
+
+
+
+
+// 3. LISTEN FOR NEW SOCKET CONNECTIONS
+io.on('connection', (socket) => {
+    console.log(`📡 A user connected to live sync: ${socket.id}`);
+
+    socket.on('disconnect', () => {
+        console.log(`🔌 User disconnected: ${socket.id}`);
+    });
+});
+
+// 4. CHANGE APP.LISTEN TO SERVER.LISTEN (Replace your old app.listen block at the very bottom)
+server.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
 });
+

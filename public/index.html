@@ -37,8 +37,22 @@
         <div id="logsDisplay">Loading your logs securely...</div>
         
         <button onclick="clearAllLogs()" class="btn-danger width-100">🗑️ Clear Cloud Database</button>
+
+        <!-- Upload Module Inside Private Dashboard -->
+<div style="background: #334155; padding: 15px; border-radius: 6px; margin: 15px 0; border: 1px solid #475569;">
+    <h4 style="margin-top:0; color: #38bdf8;">Upload Profile Picture (Max 2MB)</h4>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <!-- The 'name' attribute must match 'myFile' in your server code -->
+        <input type="file" id="fileInput" name="myFile" accept="image/*" required style="border:none; padding:5px; background:none;">
+        <button type="submit" style="background:#22c55e; color:#fff;">📤 Upload Image</button>
+    </form>
+    <div id="uploadStatus" style="font-size:13px; color:#cbd5e1; font-family:monospace;"></div>
+</div>
+
     </div>
 
+        <!-- Add this right before script.js -->
+    <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
